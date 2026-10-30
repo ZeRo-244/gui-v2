@@ -15,11 +15,29 @@ AcWidget {
 
 	readonly property bool _showSideGauge: inputOperational && size >= VenusOS.OverviewWidget_Size_M
 
+	// Grid input: show a 5 s moving average for the big total-power number instead of the
+	// instantaneous value (the EM540 grid meter updates at ~6 Hz, making it bounce).
+	// The average is published by the dbus-gridaverage service; the phase (L1/L2/L3) values
+	// stay instantaneous. Falls back to the live power if the average service is unavailable.
+	readonly property bool _isGridInput: inputInfo?.source === VenusOS.AcInputs_InputSource_Grid
+	readonly property VeQuickItem _gridAvgPower: VeQuickItem {
+		uid: root._isGridInput
+			? BackendConnection.serviceUidFromName("com.victronenergy.gridaverage.cgwacs_ttyUSB3_mb1", 0) + "/Ac/Power"
+			: ""
+	}
+	readonly property QtObject _gridAvgDataObject: QtObject {
+		readonly property real power: root._gridAvgPower.valid ? root._gridAvgPower.value
+				: (root.input ? root.input.power : NaN)
+		readonly property real current: root.input ? root.input.current : NaN
+	}
+
 	rightPadding: _showSideGauge ? Theme.geometry_overviewPage_widget_sideGauge_margins
 			: Theme.geometry_overviewPage_widget_content_horizontalMargin
 	title: !!inputInfo ? Global.acInputs.sourceToText(inputInfo.source) : ""
 	quantitySourceType: VenusOS.ElectricalQuantity_Source_AcInputOnly
-	quantityDataObject: inputOperational ? input : null
+	quantityDataObject: !inputOperational ? null
+			: (_isGridInput && _gridAvgPower.valid) ? _gridAvgDataObject
+			: input
 	phaseModel: inputOperational && input.phases.count > 1 ? input.phases : null
 	enabled: !!inputInfo
 
