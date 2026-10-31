@@ -80,7 +80,14 @@ DeviceModel {
 		property real temperature: NaN
 		property int timeToGo: 0
 		property real voltage: NaN
-		readonly property int mode: VenusOS.battery_modeFromPower(power)
+		// Derive charge/idle state from current, not power: the MultiPlus reports
+		// its internal loss as DC power (~45 W) while DC current is 0, which would
+		// falsely read as "Charging". Current and power agree in sign for real
+		// batteries, so this only corrects the inverter-as-battery case. Fall back
+		// to power when the device reports no current.
+		readonly property int mode: !isNaN(current)
+				? VenusOS.battery_modeFromPower(current)
+				: VenusOS.battery_modeFromPower(power)
 
 		function setValueIfValid(propertyName, value) {
 			if (value !== undefined) {
