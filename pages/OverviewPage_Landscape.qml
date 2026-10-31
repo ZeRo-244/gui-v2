@@ -733,7 +733,12 @@ FocusScope {
 
 		// If inverter/charger power is positive: battery is charging, so energy flows to battery.
 		// If inverter/charger power is negative: battery is discharging, so energy flows to inverter/charger.
+		// Gate on the battery monitor actually flowing (mode != Idle): the MultiPlus reports its
+		// internal loss (~45 W) on /Dc/InverterCharger/Power even when the battery is idle, which
+		// would otherwise animate as phantom charging. battery.mode comes from the authoritative
+		// monitor (shunt/BMS), which reads 0 when idle.
 		animationMode: root.isCurrentPage
+				&& Global.system.battery.mode !== VenusOS.Battery_Mode_Idle
 				&& Math.abs(inverterChargerPower.value) > Theme.geometry_overviewPage_connector_animationPowerThreshold
 						? (inverterChargerPower.value > 0
 								? VenusOS.WidgetConnector_AnimationMode_StartToEnd
