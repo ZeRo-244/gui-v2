@@ -627,16 +627,34 @@ FocusScope {
 			WidgetConnector {
 				id: acSolarConnector
 
+				// MOD: when AC-coupled PV is on the inverter's AC-OUTPUT bus (driver /Position flip,
+				// see Global.system.solar.acOnOutput), route the connector into the inverter<->battery
+				// gap and up to the inverter's RIGHT (AC-out) corner, so the diagram shows PV feeding
+				// the load side. When on the AC-input/grid bus (inverters off -> transfer-switch
+				// bypass), fall back to the stock LEFT routing.
+				readonly property bool onOutput: Global.system.solar.acOnOutput
+
 				parent: root
 				startWidget: solarWidget
 				startLocation: VenusOS.WidgetConnector_Location_Right
 				endWidget: inverterChargerWidget
-				endLocation: VenusOS.WidgetConnector_Location_Left
+				endLocation: onOutput ? VenusOS.WidgetConnector_Location_Right
+									   : VenusOS.WidgetConnector_Location_Left
+				// Drop the riser just left of the battery (center column), not behind it.
+				midpointOffsetX: onOutput ? -inverterChargerWidget.width / 2 : 0
+				// Arrive just below the inverter's bottom-right, so the horizontal run sits in the
+				// inverter<->battery gap instead of behind either box.
+				endOffsetY: onOutput ? inverterChargerWidget.compactHeight / 2
+										+ Theme.geometry_overviewPage_widget_spacing
+									  : 0
 				visible: defaultVisible && !isNaN(Global.system.solar.acPower)
 				expanded: root._expandLayout
 				frameAnimation: overviewPageRootAnimation
 				animateGeometry: root._animateGeometry
 				animationEnabled: root.animationEnabled
+
+				// Recompute the path geometry when PV flips between the AC-out and AC-in bus.
+				onOnOutputChanged: Qt.callLater(reset)
 
 				// Energy flows to Inverter/Charger if there is any PV Inverter power (i.e. AC)
 				animationMode: root.isCurrentPage
@@ -684,7 +702,15 @@ FocusScope {
 			id: inverterLeftConnectorAnchor
 			location: VenusOS.WidgetConnector_Location_Left
 			visible: Global.acInputs.findValidSource() !== VenusOS.AcInputs_InputSource_NotAvailable
-					|| !isNaN(Global.system.solar.acPower)
+					|| (!isNaN(Global.system.solar.acPower) && !Global.system.solar.acOnOutput)
+		}
+		// MOD: dot for AC-coupled PV arriving on the inverter's AC-OUTPUT (right) node.
+		// (Computed from Global rather than acSolarConnector, whose id is scoped to solarComponent.)
+		WidgetConnectorAnchor {
+			id: inverterSolarOutputAnchor
+			location: VenusOS.WidgetConnector_Location_Right
+			offsetY: inverterChargerWidget.compactHeight / 2 + Theme.geometry_overviewPage_widget_spacing
+			visible: Global.system.solar.acOnOutput && !isNaN(Global.system.solar.acPower)
 		}
 		WidgetConnectorAnchor {
 			id: inverterToAcLoadsAnchor

@@ -67,6 +67,17 @@ QtObject {
 		readonly property real dcPower: _dcPvPower.valid ? _dcPvPower.value : NaN
 		readonly property real maximumPower: _maximumPower.valid ? _maximumPower.value : NaN
 
+		// MOD: true when AC-coupled PV sits on the inverter's AC-OUTPUT bus, false when on the
+		// AC-input/grid bus. Derived from systemcalc's PvOnOutput vs PvOnGrid phase-count validity,
+		// which reflects each PV inverter's /Position. This tracks the kostal-piko driver's automatic
+		// Position flip (AC-output normally, AC-input when the inverters are off and the transfer
+		// switch bypasses them). Default false => stock grid-side routing when there is no AC PV.
+		readonly property bool acOnOutput: _pvOnOutputPhases.valid && Number(_pvOnOutputPhases.value) > 0
+
+		readonly property VeQuickItem _pvOnOutputPhases: VeQuickItem {
+			uid: root.serviceUid + "/Ac/PvOnOutput/NumberOfPhases"
+		}
+
 		readonly property VeQuickItem _maximumPower: VeQuickItem {
 			uid: Global.systemSettings.serviceUid + "/Settings/Gui/Gauges/Pv/Power/Max"
 		}
