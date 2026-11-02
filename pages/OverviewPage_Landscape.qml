@@ -615,48 +615,101 @@ FocusScope {
 			expanded: root._expandLayout
 			animateGeometry: root._animateGeometry
 			animationEnabled: root.animationEnabled
-			connectors: [ acSolarConnector, dcSolarConnector ]
+			connectors: [ acSolarConnector, acSolarGapStepConnector, acSolarGapAcrossConnector, dcSolarConnector ]
+
+			// MOD: true when AC-coupled PV is on the inverter's AC-OUTPUT bus (driver /Position flip).
+			readonly property bool acOnOutput: Global.system.solar.acOnOutput
 
 			Keys.onRightPressed: root._horizontalKeyNavigation(solarWidget, root._centerWidgets, root._lastFocusedCenterWidget)
 
 			WidgetConnectorAnchor {
 				location: VenusOS.WidgetConnector_Location_Right
-				visible: acSolarConnector.visible || dcSolarConnector.visible
+				visible: acSolarConnector.visible || acSolarGapStepConnector.visible || dcSolarConnector.visible
+			}
+
+			// MOD: AC-coupled PV routing. When PV is on the AC-INPUT/grid bus (inverters off ->
+			// transfer-switch bypass, acOnOutput=false) the stock LEFT connector shows. When on the
+			// AC-OUTPUT bus (normal, acOnOutput=true) that one hides and the PV line is drawn as an L
+			// through the inverter<->battery gap to the inverter's AC-out (right) corner, via an
+			// invisible waypoint + two stock connectors (theming/electrons inherited). The stock
+			// connector can only draw a symmetric Z (riser locked to the midpoint), so the gap route
+			// is split into: (1) a short Z-step Solar->waypoint with the riser in the clear corridor
+			// left of the battery, then (2) a straightened flat run waypoint->inverter across the gap.
+
+			// Invisible waypoint: a point in the gap, just left of the battery/center column.
+			Item {
+				id: acSolarGapWaypoint
+				parent: root
+				visible: true
+				width: 1
+				readonly property real compactHeight: 1
+				readonly property real expandedHeight: 1
+				x: inverterChargerWidget.x - Theme.geometry_overviewPage_widget_spacing
+				readonly property real compactY: inverterChargerWidget.compactY
+						+ inverterChargerWidget.compactHeight + Theme.geometry_overviewPage_widget_spacing
+				readonly property real expandedY: inverterChargerWidget.expandedY
+						+ inverterChargerWidget.expandedHeight + Theme.geometry_overviewPage_widget_spacing
 			}
 
 			WidgetConnector {
-				id: acSolarConnector
-
-				// MOD: when AC-coupled PV is on the inverter's AC-OUTPUT bus (driver /Position flip,
-				// see Global.system.solar.acOnOutput), route the connector into the inverter<->battery
-				// gap and up to the inverter's RIGHT (AC-out) corner, so the diagram shows PV feeding
-				// the load side. When on the AC-input/grid bus (inverters off -> transfer-switch
-				// bypass), fall back to the stock LEFT routing.
-				readonly property bool onOutput: Global.system.solar.acOnOutput
+				id: acSolarConnector   // AC-IN / grid-side (stock) routing
 
 				parent: root
 				startWidget: solarWidget
 				startLocation: VenusOS.WidgetConnector_Location_Right
 				endWidget: inverterChargerWidget
-				endLocation: onOutput ? VenusOS.WidgetConnector_Location_Right
-									   : VenusOS.WidgetConnector_Location_Left
-				// Drop the riser just left of the battery (center column), not behind it.
-				midpointOffsetX: onOutput ? -inverterChargerWidget.width / 2 : 0
-				// Arrive just below the inverter's bottom-right, so the horizontal run sits in the
-				// inverter<->battery gap instead of behind either box.
-				endOffsetY: onOutput ? inverterChargerWidget.compactHeight / 2
-										+ Theme.geometry_overviewPage_widget_spacing
-									  : 0
-				visible: defaultVisible && !isNaN(Global.system.solar.acPower)
+				endLocation: VenusOS.WidgetConnector_Location_Left
+				visible: defaultVisible && !isNaN(Global.system.solar.acPower) && !solarWidget.acOnOutput
 				expanded: root._expandLayout
 				frameAnimation: overviewPageRootAnimation
 				animateGeometry: root._animateGeometry
 				animationEnabled: root.animationEnabled
 
-				// Recompute the path geometry when PV flips between the AC-out and AC-in bus.
-				onOnOutputChanged: Qt.callLater(reset)
-
 				// Energy flows to Inverter/Charger if there is any PV Inverter power (i.e. AC)
+				animationMode: root.isCurrentPage
+						&& Math.abs(Global.system.solar.acPower || 0) > Theme.geometry_overviewPage_connector_animationPowerThreshold
+							   ? VenusOS.WidgetConnector_AnimationMode_StartToEnd
+							   : VenusOS.WidgetConnector_AnimationMode_NotAnimated
+			}
+
+			// AC-OUT step 1: Solar -> waypoint (short Z-step up into the gap; riser left of battery).
+			WidgetConnector {
+				id: acSolarGapStepConnector
+
+				parent: root
+				startWidget: solarWidget
+				startLocation: VenusOS.WidgetConnector_Location_Right
+				endWidget: acSolarGapWaypoint
+				endLocation: VenusOS.WidgetConnector_Location_Right
+				visible: defaultVisible && !isNaN(Global.system.solar.acPower) && solarWidget.acOnOutput
+				expanded: root._expandLayout
+				frameAnimation: overviewPageRootAnimation
+				animateGeometry: root._animateGeometry
+				animationEnabled: root.animationEnabled
+
+				animationMode: root.isCurrentPage
+						&& Math.abs(Global.system.solar.acPower || 0) > Theme.geometry_overviewPage_connector_animationPowerThreshold
+							   ? VenusOS.WidgetConnector_AnimationMode_StartToEnd
+							   : VenusOS.WidgetConnector_AnimationMode_NotAnimated
+			}
+
+			// AC-OUT step 2: waypoint -> inverter AC-out (right) corner, straightened flat across the
+			// gap (endY forced to the waypoint's gap Y => a horizontal line, no riser).
+			WidgetConnector {
+				id: acSolarGapAcrossConnector
+
+				parent: root
+				startWidget: acSolarGapWaypoint
+				startLocation: VenusOS.WidgetConnector_Location_Right
+				endWidget: inverterChargerWidget
+				endLocation: VenusOS.WidgetConnector_Location_Right
+				straighten: VenusOS.WidgetConnector_Straighten_StartToEnd
+				visible: defaultVisible && !isNaN(Global.system.solar.acPower) && solarWidget.acOnOutput
+				expanded: root._expandLayout
+				frameAnimation: overviewPageRootAnimation
+				animateGeometry: root._animateGeometry
+				animationEnabled: root.animationEnabled
+
 				animationMode: root.isCurrentPage
 						&& Math.abs(Global.system.solar.acPower || 0) > Theme.geometry_overviewPage_connector_animationPowerThreshold
 							   ? VenusOS.WidgetConnector_AnimationMode_StartToEnd
