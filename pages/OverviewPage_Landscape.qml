@@ -615,7 +615,7 @@ FocusScope {
 			expanded: root._expandLayout
 			animateGeometry: root._animateGeometry
 			animationEnabled: root.animationEnabled
-			connectors: [ acSolarConnector, acSolarGapStepConnector, acSolarGapAcrossConnector, dcSolarConnector ]
+			connectors: [ acSolarConnector, acSolarGapStepConnector, acSolarGapAcrossConnector, acSolarGapUpConnector, dcSolarConnector ]
 
 			// MOD: true when AC-coupled PV is on the inverter's AC-OUTPUT bus (driver /Position flip).
 			readonly property bool acOnOutput: Global.system.solar.acOnOutput
@@ -636,7 +636,12 @@ FocusScope {
 			// is split into: (1) a short Z-step Solar->waypoint with the riser in the clear corridor
 			// left of the battery, then (2) a straightened flat run waypoint->inverter across the gap.
 
-			// Invisible waypoint: a point in the gap, just left of the battery/center column.
+			// AC-OUT route uses three waypoints to draw the L that climbs to the AC-out node:
+			// wp1 (gap, left of battery) -> wp2 (gap, just right of inverter) -> wp3 (inverter's
+			// right-centre = the AC-out <-> AC Loads node). The stock connector can only draw a
+			// symmetric Z, so each leg is kept flat or straight: step up, flat across, straight up.
+
+			// wp1: a point in the gap, just left of the battery/center column.
 			Item {
 				id: acSolarGapWaypoint
 				parent: root
@@ -649,6 +654,34 @@ FocusScope {
 						+ inverterChargerWidget.compactHeight + Theme.geometry_overviewPage_widget_spacing
 				readonly property real expandedY: inverterChargerWidget.expandedY
 						+ inverterChargerWidget.expandedHeight + Theme.geometry_overviewPage_widget_spacing
+			}
+
+			// wp2: corner just outside the inverter's right edge, at the same gap Y as wp1.
+			Item {
+				id: acSolarGapCornerRight
+				parent: root
+				visible: true
+				width: 1
+				readonly property real compactHeight: 1
+				readonly property real expandedHeight: 1
+				x: inverterChargerWidget.x + inverterChargerWidget.width
+						+ Theme.geometry_overviewPage_connector_anchor_width
+				readonly property real compactY: acSolarGapWaypoint.compactY
+				readonly property real expandedY: acSolarGapWaypoint.expandedY
+			}
+
+			// wp3: the AC-out node, at the inverter's right-centre (where AC Loads connects), same X
+			// as wp2 so the climb is a straight vertical up the inverter's outside right edge.
+			Item {
+				id: acSolarAcOutNode
+				parent: root
+				visible: true
+				width: 1
+				readonly property real compactHeight: 1
+				readonly property real expandedHeight: 1
+				x: acSolarGapCornerRight.x
+				readonly property real compactY: inverterChargerWidget.compactY + inverterChargerWidget.compactHeight / 2
+				readonly property real expandedY: inverterChargerWidget.expandedY + inverterChargerWidget.expandedHeight / 2
 			}
 
 			WidgetConnector {
@@ -693,7 +726,7 @@ FocusScope {
 							   : VenusOS.WidgetConnector_AnimationMode_NotAnimated
 			}
 
-			// AC-OUT step 2: waypoint -> inverter AC-out (right) corner, straightened flat across the
+			// AC-OUT step 2: waypoint -> corner right of the inverter, straightened flat across the
 			// gap (endY forced to the waypoint's gap Y => a horizontal line, no riser).
 			WidgetConnector {
 				id: acSolarGapAcrossConnector
@@ -701,9 +734,31 @@ FocusScope {
 				parent: root
 				startWidget: acSolarGapWaypoint
 				startLocation: VenusOS.WidgetConnector_Location_Right
-				endWidget: inverterChargerWidget
-				endLocation: VenusOS.WidgetConnector_Location_Right
+				endWidget: acSolarGapCornerRight
+				endLocation: VenusOS.WidgetConnector_Location_Left
 				straighten: VenusOS.WidgetConnector_Straighten_StartToEnd
+				visible: defaultVisible && !isNaN(Global.system.solar.acPower) && solarWidget.acOnOutput
+				expanded: root._expandLayout
+				frameAnimation: overviewPageRootAnimation
+				animateGeometry: root._animateGeometry
+				animationEnabled: root.animationEnabled
+
+				animationMode: root.isCurrentPage
+						&& Math.abs(Global.system.solar.acPower || 0) > Theme.geometry_overviewPage_connector_animationPowerThreshold
+							   ? VenusOS.WidgetConnector_AnimationMode_StartToEnd
+							   : VenusOS.WidgetConnector_AnimationMode_NotAnimated
+			}
+
+			// AC-OUT step 3: corner -> AC-out node, straight vertical up the inverter's outside right
+			// edge to the inverter<->AC Loads junction.
+			WidgetConnector {
+				id: acSolarGapUpConnector
+
+				parent: root
+				startWidget: acSolarGapCornerRight
+				startLocation: VenusOS.WidgetConnector_Location_Top
+				endWidget: acSolarAcOutNode
+				endLocation: VenusOS.WidgetConnector_Location_Bottom
 				visible: defaultVisible && !isNaN(Global.system.solar.acPower) && solarWidget.acOnOutput
 				expanded: root._expandLayout
 				frameAnimation: overviewPageRootAnimation
@@ -756,14 +811,6 @@ FocusScope {
 			location: VenusOS.WidgetConnector_Location_Left
 			visible: Global.acInputs.findValidSource() !== VenusOS.AcInputs_InputSource_NotAvailable
 					|| (!isNaN(Global.system.solar.acPower) && !Global.system.solar.acOnOutput)
-		}
-		// MOD: dot for AC-coupled PV arriving on the inverter's AC-OUTPUT (right) node.
-		// (Computed from Global rather than acSolarConnector, whose id is scoped to solarComponent.)
-		WidgetConnectorAnchor {
-			id: inverterSolarOutputAnchor
-			location: VenusOS.WidgetConnector_Location_Right
-			offsetY: inverterChargerWidget.compactHeight / 2 + Theme.geometry_overviewPage_widget_spacing
-			visible: Global.system.solar.acOnOutput && !isNaN(Global.system.solar.acPower)
 		}
 		WidgetConnectorAnchor {
 			id: inverterToAcLoadsAnchor
