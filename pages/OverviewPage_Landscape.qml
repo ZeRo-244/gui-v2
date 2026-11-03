@@ -634,10 +634,10 @@ FocusScope {
 			SolarAcOutConnector {
 				id: acSolarAcOutConnector
 				parent: root
-				solarWidget: solarWidget
-				inverterWidget: inverterChargerWidget
-				batteryWidget: batteryWidget
-				acLoadsWidget: acLoadsWidget
+				solarItem: solarWidget
+				inverterItem: inverterChargerWidget
+				batteryItem: batteryWidget
+				acLoadsItem: acLoadsWidget
 				frameAnimation: overviewPageRootAnimation
 				animationEnabled: root.animationEnabled
 				active: !isNaN(Global.system.solar.acPower) && solarWidget.acOnOutput
