@@ -23,10 +23,12 @@ Item {
 	anchors.fill: parent   // fill the page so the Shape's absolute-coord drawing isn't clipped
 
 	// Geometry inputs (all OverviewWidget instances in the page's root coord system).
-	property var solarWidget
-	property var inverterWidget
-	property var batteryWidget
-	property var acLoadsWidget
+	// NB: property names deliberately differ from the page's ids (solarWidget/batteryWidget/...)
+	// to avoid a self-referencing binding when assigned at the use site.
+	property var solarItem
+	property var inverterItem
+	property var batteryItem
+	property var acLoadsItem
 
 	property bool active: false          // show the route (PV is on the AC-out bus)
 	property bool flowing: false         // animate electrons (PV power over threshold)
@@ -39,15 +41,15 @@ Item {
 	readonly property real _baseRadius: 2.2 * Theme.geometry_overviewPage_connector_anchor_width
 
 	// --- Route points -------------------------------------------------------------
-	readonly property real _p0x: solarWidget.x + solarWidget.width + _aw
-	readonly property real _p0y: solarWidget.compactY + solarWidget.compactHeight / 2
-	readonly property real _invRight: inverterWidget.x + inverterWidget.width
-	readonly property real _invBottom: inverterWidget.compactY + inverterWidget.compactHeight
-	readonly property real _ty: inverterWidget.compactY + inverterWidget.compactHeight / 2   // AC-out node Y (inverter centre)
-	readonly property real _gy: (_invBottom + batteryWidget.compactY) / 2                     // gap centre Y
-	readonly property real _lx: inverterWidget.x - _spacing                                   // riser X, clear corridor left of battery
+	readonly property real _p0x: solarItem.x + solarItem.width + _aw
+	readonly property real _p0y: solarItem.compactY + solarItem.compactHeight / 2
+	readonly property real _invRight: inverterItem.x + inverterItem.width
+	readonly property real _invBottom: inverterItem.compactY + inverterItem.compactHeight
+	readonly property real _ty: inverterItem.compactY + inverterItem.compactHeight / 2   // AC-out node Y (inverter centre)
+	readonly property real _gy: (_invBottom + batteryItem.compactY) / 2                     // gap centre Y
+	readonly property real _lx: inverterItem.x - _spacing                                   // riser X, clear corridor left of battery
 	// AC Loads<->EVCS connector riser X (acLoads.Left minus a quarter of the inverter<->rightcol gap).
-	readonly property real _acLoadsEvcsX: acLoadsWidget.x - _aw - (acLoadsWidget.x - _invRight) / 4
+	readonly property real _acLoadsEvcsX: acLoadsItem.x - _aw - (acLoadsItem.x - _invRight) / 4
 	readonly property real _cx: (_invRight + _acLoadsEvcsX) / 2                               // vertical X, centred in that space
 
 	readonly property real _r: Math.max(2, Math.min(_baseRadius,
@@ -56,7 +58,7 @@ Item {
 	// Approx path length for electron spacing/speed (straight-leg sum).
 	readonly property real _pathLength: (_lx - _p0x) + (_p0y - _gy) + (_cx - _lx) + (_gy - _ty)
 
-	visible: active && solarWidget.visible && inverterWidget.visible
+	visible: active && solarItem.visible && inverterItem.visible
 
 	onVisibleChanged: Qt.callLater(_resetElectrons)
 	on_PathLengthChanged: Qt.callLater(_resetElectrons)
