@@ -312,6 +312,7 @@ set (VictronVenusOS_QML_MODULE_SOURCES
     components/widgets/InverterChargerWidget.qml
     components/widgets/OverviewWidget.qml
     components/widgets/OverviewElectricalQuantityLabel.qml
+    components/widgets/SolarAcOutConnector.qml
     components/widgets/SolarYieldWidget.qml
     components/widgets/WidgetConnector.qml
     components/widgets/WidgetConnectorAnchor.qml
