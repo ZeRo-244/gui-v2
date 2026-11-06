@@ -57,6 +57,14 @@ OverviewWidget {
 		uid: Global.system.veBus.serviceUid ? Global.system.veBus.serviceUid + "/Ac/State/RemoteGeneratorSelected" : ""
 	}
 
+	// Parasitic-load SoC correction (%) published by dbus-aggregate-batteries on its own
+	// service (not mirrored onto com.victronenergy.system, so bind the service directly).
+	// Service name + instance are the fixed values from that driver (DeviceInstance 99).
+	VeQuickItem {
+		id: parasiticDeficitSoc
+		uid: BackendConnection.serviceUidFromName("com.victronenergy.battery.aggregate", 99) + "/ParasiticDeficitSoc"
+	}
+
 	title: CommonWords.battery
 	type: VenusOS.OverviewWidget_Type_Battery
 	enabled: batteries.valid
@@ -187,35 +195,68 @@ OverviewWidget {
 			Layout.fillWidth: true
 		}
 
-		Label {
-			text: VenusOS.battery_modeToText(Global.system.battery.mode)
-			elide: Text.ElideRight
-			color: Theme.color_overviewPage_widget_battery_font_secondary
-			font.pixelSize: Theme.font_overviewPage_battery_small
-			Layout.fillWidth: true
-		}
-
 		RowLayout {
 			spacing: Theme.geometry_overviewPage_widget_content_horizontalMargin
-			Layout.fillWidth: false
+			Layout.fillWidth: true
 
-			Label {
-				text: Global.system.battery.timeToGo == 0 ? "" : Utils.secondsToString(Global.system.battery.timeToGo)
-				visible: Global.system.battery.timeToGo > 0
-				elide: Text.ElideRight
-				font.pixelSize: Theme.font_overviewPage_battery_small
+			ColumnLayout {
+				spacing: 0
 				Layout.fillWidth: true
+
+				Label {
+					text: VenusOS.battery_modeToText(Global.system.battery.mode)
+					elide: Text.ElideRight
+					color: Theme.color_overviewPage_widget_battery_font_secondary
+					font.pixelSize: Theme.font_overviewPage_battery_small
+					Layout.fillWidth: true
+				}
+
+				RowLayout {
+					spacing: Theme.geometry_overviewPage_widget_content_horizontalMargin
+					Layout.fillWidth: false
+
+					Label {
+						text: Global.system.battery.timeToGo == 0 ? "" : Utils.secondsToString(Global.system.battery.timeToGo)
+						visible: Global.system.battery.timeToGo > 0
+						elide: Text.ElideRight
+						font.pixelSize: Theme.font_overviewPage_battery_small
+						Layout.fillWidth: true
+					}
+
+					CP.ColorImage {
+						fillMode: Image.PreserveAspectFit
+						color: Theme.color_font_primary
+						visible: root.preferRenewableOverride
+						source: root.preferRenewableOverrideGenset
+								? "qrc:/images/icon_charging_generator.svg"
+								: Global.acInputs.activeInSource === VenusOS.AcInputs_InputSource_Shore
+								  ? "qrc:/images/icon_charging_shore.svg"
+								  : "qrc:/images/icon_charging_grid.svg"
+					}
+				}
 			}
 
-			CP.ColorImage {
-				fillMode: Image.PreserveAspectFit
-				color: Theme.color_font_primary
-				visible: root.preferRenewableOverride
-				source: root.preferRenewableOverrideGenset
-						? "qrc:/images/icon_charging_generator.svg"
-						: Global.acInputs.activeInSource === VenusOS.AcInputs_InputSource_Shore
-						  ? "qrc:/images/icon_charging_shore.svg"
-						  : "qrc:/images/icon_charging_grid.svg"
+			// SoC correction applied by dbus-aggregate-batteries (shown as a negative %)
+			ColumnLayout {
+				spacing: 0
+				Layout.alignment: Qt.AlignRight | Qt.AlignTop
+				visible: parasiticDeficitSoc.valid
+
+				Label {
+					text: qsTr("Correction")
+					color: Theme.color_overviewPage_widget_battery_font_secondary
+					font.pixelSize: Theme.font_overviewPage_battery_small
+					horizontalAlignment: Text.AlignRight
+					Layout.alignment: Qt.AlignRight
+				}
+
+				Label {
+					text: (-(parasiticDeficitSoc.value || 0)).toFixed(1) + "%"
+					color: Theme.color_overviewPage_widget_battery_font_secondary
+					font.pixelSize: Theme.font_overviewPage_battery_small
+					horizontalAlignment: Text.AlignRight
+					Layout.alignment: Qt.AlignRight
+				}
 			}
 		}
 
