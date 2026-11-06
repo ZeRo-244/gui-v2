@@ -1,3 +1,4 @@
 Build target: venusberry (Venus OS v3.85)
 gui-v2 pinned to v1.3.22
 WASM build via GitHub Action (build-wasm.yml).
+trigger 2026-11-07 wasm-10: parasitic SoC correction in BatteryWidget
