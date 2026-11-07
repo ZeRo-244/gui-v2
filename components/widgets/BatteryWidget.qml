@@ -59,10 +59,11 @@ OverviewWidget {
 
 	// Parasitic-load SoC correction (%) published by dbus-aggregate-batteries on its own
 	// service (not mirrored onto com.victronenergy.system, so bind the service directly).
-	// Service name + instance are the fixed values from that driver (DeviceInstance 99).
+	// The aggregate battery is DeviceInstance 0 on this system (verified live); the instance
+	// matters for the MQTT backend uid (mqtt/battery/<instance>/...), which the browser uses.
 	VeQuickItem {
 		id: parasiticDeficitSoc
-		uid: BackendConnection.serviceUidFromName("com.victronenergy.battery.aggregate", 99) + "/ParasiticDeficitSoc"
+		uid: BackendConnection.serviceUidFromName("com.victronenergy.battery.aggregate", 0) + "/ParasiticDeficitSoc"
 	}
 
 	title: CommonWords.battery
