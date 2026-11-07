@@ -192,6 +192,7 @@ OverviewWidget {
 			alignment: Qt.AlignLeft
 			value: Global.system.battery.stateOfCharge
 			unit: VenusOS.Units_Percentage
+			decimals: 1
 			unitColor: Theme.color_overviewPage_widget_battery_font_secondary
 			Layout.fillWidth: true
 		}

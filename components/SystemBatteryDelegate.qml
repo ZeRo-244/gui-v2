@@ -72,6 +72,7 @@ ListItem {
 
 					value: root.device.stateOfCharge
 					unit: VenusOS.Units_Percentage
+					decimals: 1
 					font: root.font
 					visible: !isNaN(root.device.stateOfCharge)
 					valueColor: root.device.mode === VenusOS.Battery_Mode_Idle ? Theme.color_font_primary
