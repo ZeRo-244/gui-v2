@@ -53,27 +53,6 @@ OverviewWidget {
 			Layout.preferredWidth: root.stretchHorizontally
 					? (parent.width/2 + Theme.geometry_overviewPage_widget_spacing)  // push details to the right
 					: -1
-
-			// Car SoC to the right of the charge power (dbus-keba-p30 publishes an
-			// estimate on /Soc from the Škoda API). Hidden unless a single charger
-			// has a valid /Soc, so the stock layout is unchanged with no car / API.
-			QuantityLabel {
-				anchors.right: parent.right
-				anchors.rightMargin: Theme.geometry_overviewPage_widget_content_horizontalMargin
-				anchors.verticalCenter: parent.verticalCenter
-				value: carSocItem.value ?? NaN
-				unit: VenusOS.Units_Percentage
-				decimals: 0
-				font.pixelSize: root.tertiaryFontSize
-				visible: carSocItem.valid
-
-				VeQuickItem {
-					id: carSocItem
-					uid: Global.evChargers.model.firstObject
-							? Global.evChargers.model.firstObject.serviceUid + "/Soc"
-							: ""
-				}
-			}
 		}
 
 		Loader {
@@ -97,6 +76,24 @@ OverviewWidget {
 			readonly property string serviceUid: Global.evChargers.model.firstObject.serviceUid
 
 			width: parent.width
+
+			// Car SoC (dbus-keba-p30 /Soc, Škoda-API estimate) on its own line
+			// directly under the power. Hidden unless /Soc is valid (car + API).
+			QuantityLabel {
+				height: chargingTimeLabel.height
+				value: carSocItem.value ?? NaN
+				valueColor: unitColor
+				alignment: Qt.AlignLeft
+				unit: VenusOS.Units_Percentage
+				decimals: 1
+				font.pixelSize: root.tertiaryFontSize
+				visible: carSocItem.valid
+
+				VeQuickItem {
+					id: carSocItem
+					uid: singleCharger.serviceUid + "/Soc"
+				}
+			}
 
 			QuantityLabel {
 				height: chargingTimeLabel.height // use normal label height, instead of default baseline calculation
