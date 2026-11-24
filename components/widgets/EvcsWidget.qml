@@ -28,6 +28,35 @@ OverviewWidget {
 	preferredSize: VenusOS.OverviewWidget_PreferredSize_LargeOnly
 	enabled: true
 
+	// Gear (top-right): jumps straight to the GUI-plugin settings page registered
+	// for the charger's productId (dbus-keba-p30: "KEBA auto-mode"), the same page
+	// the device page links to. Hidden with no such plugin or >1 charger.
+	readonly property var _singleCharger: Global.evChargers.model.count === 1
+			? Global.evChargers.model.firstObject : null
+
+	GuiPluginIntegrationModel {
+		id: pluginPages
+		type: GuiPluginLoader.DeviceListSettingsPage
+		productId: root._singleCharger && root._singleCharger.productId > 0
+				? Utils.toHexFormat(root._singleCharger.productId) : ""
+	}
+
+	IconButton {
+		anchors {
+			top: parent.top
+			right: parent.right
+		}
+		width: Theme.geometry_button_touch_size
+		height: Theme.geometry_button_touch_size
+		radius: Theme.geometry_overviewPage_widget_radius
+		icon.source: "qrc:/images/settings.svg"
+		icon.sourceSize.height: 28
+		icon.color: Theme.color_font_primary
+		visible: !!root._singleCharger && pluginPages.count > 0
+		onClicked: Global.pageManager.pushPage(pluginPages.integrationAt(0).url,
+				{ "device": root._singleCharger })
+	}
+
 	contentItem: GridLayout {
 		columnSpacing: 0
 		rowSpacing: Theme.geometry_overviewPage_widget_content_spacing
