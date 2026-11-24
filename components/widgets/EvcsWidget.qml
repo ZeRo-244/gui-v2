@@ -107,56 +107,47 @@ OverviewWidget {
 
 			width: parent.width
 
-			// Car SoC (dbus-keba-p30 /Soc, Škoda-API estimate) on its own line
-			// directly under the power, and on the right the charge target from the
-			// driver's /Custom/TargetText: "→ 100% by 07:45" (ready-by deadline),
-			// "→ 80% ~02:15" (forecast while charging) or "→ 80%". Each part hidden
-			// unless its data is valid / non-empty.
-			Item {
+			// Car SoC + charge target from dbus-keba-p30 on one line, laid out left to
+			// right: "81.1 → 100% 07:45" / "81.1 → 80% ~02:15" / "81.1%". Both texts
+			// are built by the driver (/Custom/SocText, /Custom/TargetText) so format
+			// tweaks need no WASM rebuild. Roboto has no U+2192, so the arrow is the
+			// up-arrow icon turned right. The target elides if it ever overflows.
+			RowLayout {
+				readonly property string socText: socTextItem.valid ? String(socTextItem.value) : ""
 				readonly property string targetText: targetTextItem.valid ? String(targetTextItem.value) : ""
 
 				width: parent.width
 				height: chargingTimeLabel.height
-				visible: carSocItem.valid || targetText !== ""
+				spacing: Theme.geometry_overviewPage_widget_content_horizontalMargin / 4
+				visible: socText !== "" || targetText !== ""
 
-				QuantityLabel {
-					anchors.left: parent.left
-					height: parent.height
-					value: carSocItem.value ?? NaN
-					valueColor: unitColor
-					alignment: Qt.AlignLeft
-					unit: VenusOS.Units_Percentage
-					decimals: 1
+				Label {
+					text: parent.socText
+					visible: text !== ""
+					color: Theme.color_font_secondary
 					font.pixelSize: root.tertiaryFontSize
-					visible: carSocItem.valid
 				}
 
-				Row {
-					anchors.right: parent.right
-					height: parent.height
-					spacing: Theme.geometry_overviewPage_widget_content_horizontalMargin / 4
+				CP.ColorImage {
+					source: "qrc:/images/icon_arrow.svg"
+					sourceSize.height: root.tertiaryFontSize * 1.2
+					rotation: 90
+					color: Theme.color_font_secondary
 					visible: parent.targetText !== ""
+				}
 
-					// Roboto has no U+2192, so draw the arrow: up-arrow icon turned right.
-					CP.ColorImage {
-						anchors.verticalCenter: parent.verticalCenter
-						source: "qrc:/images/icon_arrow.svg"
-						sourceSize.height: root.tertiaryFontSize * 1.2
-						rotation: 90
-						color: Theme.color_font_secondary
-					}
-
-					Label {
-						anchors.verticalCenter: parent.verticalCenter
-						text: parent.parent.targetText
-						color: Theme.color_font_secondary
-						font.pixelSize: root.tertiaryFontSize
-					}
+				Label {
+					text: parent.targetText
+					visible: text !== ""
+					elide: Text.ElideRight
+					color: Theme.color_font_secondary
+					font.pixelSize: root.tertiaryFontSize
+					Layout.fillWidth: true
 				}
 
 				VeQuickItem {
-					id: carSocItem
-					uid: singleCharger.serviceUid + "/Soc"
+					id: socTextItem
+					uid: singleCharger.serviceUid + "/Custom/SocText"
 				}
 				VeQuickItem {
 					id: targetTextItem
