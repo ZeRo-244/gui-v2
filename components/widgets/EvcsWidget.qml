@@ -5,6 +5,7 @@
 
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls.impl as CP
 import Victron.VenusOS
 
 OverviewWidget {
@@ -107,20 +108,75 @@ OverviewWidget {
 			width: parent.width
 
 			// Car SoC (dbus-keba-p30 /Soc, Škoda-API estimate) on its own line
-			// directly under the power. Hidden unless /Soc is valid (car + API).
-			QuantityLabel {
+			// directly under the power, and on the right the armed charge target:
+			// "→ 100% by 07:45" (ready-by on, time ahead) or "→ 100%". Each part
+			// hidden unless its data is valid / a target is armed.
+			Item {
+				readonly property bool armed: Number(elActiveItem.value) === 1
+				readonly property bool readyBy: armed && Number(readyByOnItem.value) === 1
+						&& Number(readyByItem.value || 0) > ClockTime.clockTime
+
+				width: parent.width
 				height: chargingTimeLabel.height
-				value: carSocItem.value ?? NaN
-				valueColor: unitColor
-				alignment: Qt.AlignLeft
-				unit: VenusOS.Units_Percentage
-				decimals: 1
-				font.pixelSize: root.tertiaryFontSize
-				visible: carSocItem.valid
+				visible: carSocItem.valid || armed
+
+				QuantityLabel {
+					anchors.left: parent.left
+					height: parent.height
+					value: carSocItem.value ?? NaN
+					valueColor: unitColor
+					alignment: Qt.AlignLeft
+					unit: VenusOS.Units_Percentage
+					decimals: 1
+					font.pixelSize: root.tertiaryFontSize
+					visible: carSocItem.valid
+				}
+
+				Row {
+					anchors.right: parent.right
+					height: parent.height
+					spacing: Theme.geometry_overviewPage_widget_content_horizontalMargin / 4
+					visible: parent.armed
+
+					// Roboto has no U+2192, so draw the arrow: up-arrow icon turned right.
+					CP.ColorImage {
+						anchors.verticalCenter: parent.verticalCenter
+						source: "qrc:/images/icon_arrow.svg"
+						sourceSize.height: root.tertiaryFontSize * 1.2
+						rotation: 90
+						color: Theme.color_font_secondary
+					}
+
+					Label {
+						anchors.verticalCenter: parent.verticalCenter
+						text: Number(targetSocItem.value || 0) + "%"
+								+ (parent.parent.readyBy
+									? " by " + ClockTime.formatDeltaDate(readyByItem.value - ClockTime.clockTime, "hh:mm")
+									: "")
+						color: Theme.color_font_secondary
+						font.pixelSize: root.tertiaryFontSize
+					}
+				}
 
 				VeQuickItem {
 					id: carSocItem
 					uid: singleCharger.serviceUid + "/Soc"
+				}
+				VeQuickItem {
+					id: elActiveItem
+					uid: singleCharger.serviceUid + "/EnergyLimit/Active"
+				}
+				VeQuickItem {
+					id: targetSocItem
+					uid: singleCharger.serviceUid + "/EnergyLimit/TargetSoc"
+				}
+				VeQuickItem {
+					id: readyByOnItem
+					uid: singleCharger.serviceUid + "/EnergyLimit/ReadyByEnabled"
+				}
+				VeQuickItem {
+					id: readyByItem
+					uid: singleCharger.serviceUid + "/EnergyLimit/ReadyBy"
 				}
 			}
 
