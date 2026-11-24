@@ -108,17 +108,16 @@ OverviewWidget {
 			width: parent.width
 
 			// Car SoC (dbus-keba-p30 /Soc, Škoda-API estimate) on its own line
-			// directly under the power, and on the right the armed charge target:
-			// "→ 100% by 07:45" (ready-by on, time ahead) or "→ 100%". Each part
-			// hidden unless its data is valid / a target is armed.
+			// directly under the power, and on the right the charge target from the
+			// driver's /Custom/TargetText: "→ 100% by 07:45" (ready-by deadline),
+			// "→ 80% ~02:15" (forecast while charging) or "→ 80%". Each part hidden
+			// unless its data is valid / non-empty.
 			Item {
-				readonly property bool armed: Number(elActiveItem.value) === 1
-				readonly property bool readyBy: armed && Number(readyByOnItem.value) === 1
-						&& Number(readyByItem.value || 0) > ClockTime.clockTime
+				readonly property string targetText: targetTextItem.valid ? String(targetTextItem.value) : ""
 
 				width: parent.width
 				height: chargingTimeLabel.height
-				visible: carSocItem.valid || armed
+				visible: carSocItem.valid || targetText !== ""
 
 				QuantityLabel {
 					anchors.left: parent.left
@@ -136,7 +135,7 @@ OverviewWidget {
 					anchors.right: parent.right
 					height: parent.height
 					spacing: Theme.geometry_overviewPage_widget_content_horizontalMargin / 4
-					visible: parent.armed
+					visible: parent.targetText !== ""
 
 					// Roboto has no U+2192, so draw the arrow: up-arrow icon turned right.
 					CP.ColorImage {
@@ -149,10 +148,7 @@ OverviewWidget {
 
 					Label {
 						anchors.verticalCenter: parent.verticalCenter
-						text: Number(targetSocItem.value || 0) + "%"
-								+ (parent.parent.readyBy
-									? " by " + ClockTime.formatDeltaDate(readyByItem.value - ClockTime.clockTime, "hh:mm")
-									: "")
+						text: parent.parent.targetText
 						color: Theme.color_font_secondary
 						font.pixelSize: root.tertiaryFontSize
 					}
@@ -163,20 +159,8 @@ OverviewWidget {
 					uid: singleCharger.serviceUid + "/Soc"
 				}
 				VeQuickItem {
-					id: elActiveItem
-					uid: singleCharger.serviceUid + "/EnergyLimit/Active"
-				}
-				VeQuickItem {
-					id: targetSocItem
-					uid: singleCharger.serviceUid + "/EnergyLimit/TargetSoc"
-				}
-				VeQuickItem {
-					id: readyByOnItem
-					uid: singleCharger.serviceUid + "/EnergyLimit/ReadyByEnabled"
-				}
-				VeQuickItem {
-					id: readyByItem
-					uid: singleCharger.serviceUid + "/EnergyLimit/ReadyBy"
+					id: targetTextItem
+					uid: singleCharger.serviceUid + "/Custom/TargetText"
 				}
 			}
 
